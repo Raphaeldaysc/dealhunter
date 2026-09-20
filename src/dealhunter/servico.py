@@ -4,19 +4,19 @@ from collections.abc import Callable
 
 import httpx
 
-from apiaprendiz.busca import buscar_candidatos, comparar_jogo
-from apiaprendiz.cliente import criar_cliente
-from apiaprendiz.cotacao import cotacao_usd_brl
-from apiaprendiz.fontes import (
+from dealhunter.busca import buscar_candidatos, comparar_jogo
+from dealhunter.cliente import criar_cliente
+from dealhunter.cotacao import cotacao_usd_brl
+from dealhunter.fontes import (
     buscar_deals_cheapshark,
     buscar_steam_lista,
     catalogo_gog,
     jogos_epic,
     mapear_lojas,
 )
-from apiaprendiz.formatacao import misturar_sem_duplicar, preco_em_brl, preco_normal_brl
-from apiaprendiz.modelos import Candidato, ItemWishlist, Oferta, PontoHistorico
-from apiaprendiz.persistencia import (
+from dealhunter.formatacao import misturar_sem_duplicar, preco_em_brl, preco_normal_brl
+from dealhunter.modelos import Candidato, ItemWishlist, Oferta, PontoHistorico
+from dealhunter.persistencia import (
     adicionar_wishlist,
     carregar_wishlist,
     historico_do_jogo,

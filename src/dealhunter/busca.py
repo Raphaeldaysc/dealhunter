@@ -2,16 +2,16 @@ from __future__ import annotations
 
 import httpx
 
-from apiaprendiz.cliente import get
-from apiaprendiz.fontes import (
+from dealhunter.cliente import get
+from dealhunter.fontes import (
     CHEAPSHARK_GAMES,
     GOG_CATALOG,
     STEAM_STORESEARCH,
     mapear_lojas,
     preco_steam_br,
 )
-from apiaprendiz.formatacao import misturar_sem_duplicar, mesmo_jogo, oferta, pontuar_candidato
-from apiaprendiz.modelos import Candidato, Oferta
+from dealhunter.formatacao import misturar_sem_duplicar, mesmo_jogo, oferta, pontuar_candidato
+from dealhunter.modelos import Candidato, Oferta
 
 GOG_AJAX = "https://embed.gog.com/games/ajax/filtered"
 

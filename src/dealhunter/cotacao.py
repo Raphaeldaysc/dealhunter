@@ -8,7 +8,7 @@ from pathlib import Path
 
 import httpx
 
-from apiaprendiz.cliente import get
+from dealhunter.cliente import get
 
 TTL_COTACAO = 5 * 60
 CACHE_COTACAO = Path(__file__).resolve().parents[2] / ".cache_cotacao.json"
@@ -61,30 +61,42 @@ def cotacao_usd_brl(client: httpx.Client) -> tuple[float, str]:
             if taxa > 0:
                 salvar_cache_cotacao(taxa, nome)
                 return taxa, nome
-        except (httpx.HTTPError, KeyError, TypeError, ValueError, IndexError) as erro:
+        except (
+            httpx.HTTPError,
+            KeyError,
+            TypeError,
+            ValueError,
+            IndexError,
+            RuntimeError,
+        ) as erro:
             erros.append(f"{nome}: {erro}")
 
     raise RuntimeError("Nenhuma API de cotação respondeu. " + " | ".join(erros))
 
 
 def _taxa_awesome(client: httpx.Client) -> float:
-    dados = get(client, AWESOME_USD_BRL).json()["USDBRL"]
+    dados = get(client, AWESOME_USD_BRL, tentativas=2).json()["USDBRL"]
     return float(dados["bid"])
 
 
 def _taxa_open_er(client: httpx.Client) -> float:
-    dados = get(client, OPEN_ER_USD).json()
+    dados = get(client, OPEN_ER_USD, tentativas=2).json()
     if dados.get("result") != "success":
         raise ValueError("resposta inválida")
     return float(dados["rates"]["BRL"])
 
 
 def _taxa_fawaz(client: httpx.Client) -> float:
-    return float(get(client, FAWAZ_USD).json()["usd"]["brl"])
+    return float(get(client, FAWAZ_USD, tentativas=2).json()["usd"]["brl"])
 
 
 def _taxa_frankfurter(client: httpx.Client) -> float:
-    dados = get(client, FRANKFURTER_USD_BRL, params={"from": "USD", "to": "BRL"}).json()
+    dados = get(
+        client,
+        FRANKFURTER_USD_BRL,
+        params={"from": "USD", "to": "BRL"},
+        tentativas=2,
+    ).json()
     return float(dados["rates"]["BRL"])
 
 
@@ -94,6 +106,7 @@ def _taxa_bcb(client: httpx.Client) -> float:
     dados = get(
         client,
         BCB_PTAX,
+        tentativas=2,
         params={
             "@dataInicial": inicio.strftime("'%m-%d-%Y'"),
             "@dataFinalCotacao": fim.strftime("'%m-%d-%Y'"),

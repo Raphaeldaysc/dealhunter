@@ -5,7 +5,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from apiaprendiz.modelos import ConfigAlerta, ItemWishlist, PontoHistorico
+from dealhunter.modelos import ConfigAlerta, ItemWishlist, PontoHistorico
 
 RAIZ = Path(__file__).resolve().parents[2]
 PASTA_DADOS = RAIZ / "data"

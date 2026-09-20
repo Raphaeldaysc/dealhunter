@@ -1,4 +1,4 @@
-from apiaprendiz import main
+from dealhunter import main
 
 if __name__ == "__main__":
     main()

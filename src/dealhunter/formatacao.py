@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 import unicodedata
 
-from apiaprendiz.modelos import Oferta
+from dealhunter.modelos import Oferta
 
 _STOP = {"the", "a", "an", "of", "and"}
 _EDICOES = {

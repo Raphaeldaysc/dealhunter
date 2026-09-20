@@ -6,9 +6,9 @@ from html import unescape
 
 import httpx
 
-from apiaprendiz.cliente import get
-from apiaprendiz.formatacao import misturar_sem_duplicar, oferta
-from apiaprendiz.modelos import Oferta
+from dealhunter.cliente import get
+from dealhunter.formatacao import misturar_sem_duplicar, oferta
+from dealhunter.modelos import Oferta
 
 CHEAPSHARK_DEALS = "https://www.cheapshark.com/api/1.0/deals"
 CHEAPSHARK_STORES = "https://www.cheapshark.com/api/1.0/stores"

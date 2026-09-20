@@ -1,62 +1,97 @@
-# DealHunter
+# DealHunter — Multi-store Game Price Tracker
 
-App Streamlit para achar **onde o jogo está mais barato** (Steam, Epic, GOG e lojas da CheapShark), listar **promoções** e **jogos grátis**, montar **wishlist** e avisar no **Discord** quando o desconto (ou o preço-alvo) bater.
+[![Python](https://img.shields.io/badge/Python-3.14+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
+[![HTTPX](https://img.shields.io/badge/HTTPX-0.28-0099E5)](https://www.python-httpx.org/)
+[![Demo](https://img.shields.io/badge/demo-dealhunter.streamlit.app-14b8a6)](https://dealhunter.streamlit.app/)
 
-Feito por [Raphael Dias](https://www.raphaeldias.dev.br/).
+Aplicação web em **Python** e **Streamlit** que integra APIs públicas de lojas e marketplaces de jogos, **normaliza preços em BRL**, compara ofertas, mantém wishlist/histórico e envia alertas via **Discord**. Consome HTTP com **HTTPX**, trata falhas, faz fallback de APIs e persiste dados localmente.
 
-## O que o app faz
+**Demo:** [dealhunter.streamlit.app](https://dealhunter.streamlit.app/) · **Autor:** [Raphael Dias](https://www.raphaeldias.dev.br/)
 
-- **Buscar jogo** — compara preços entre lojas, em reais.
-- **Melhores promoções** — filtro de desconto mínimo + paginação.
-- **Jogos grátis** — giveaways, próximos da Epic e títulos sempre grátis.
-- **Wishlist** — preço desejado, histórico e webhook do Discord.
+## Telas
 
-Preços da Steam, Epic e GOG vêm em BRL. O restante (CheapShark) chega em USD e é convertido na hora.
+| Principal | Comparação de preços | Wishlist + Discord |
+| --- | --- | --- |
+| ![Tela principal](docs/screenshots/home.png) | ![Comparação](docs/screenshots/comparacao.png) | ![Wishlist](docs/screenshots/wishlist.png) |
 
-## Rodar localmente (uv)
+- **Buscar jogo** — um título, várias lojas, menor preço em reais.
+- **Melhores promoções** — desconto mínimo + paginação.
+- **Jogos grátis** — giveaway agora, próximos da Epic, F2P.
+- **Wishlist** — preço-alvo, histórico e webhook do Discord.
+
+## Arquitetura
+
+```mermaid
+flowchart LR
+  A[APIs externas<br/>Steam · Epic · GOG<br/>CheapShark · câmbio] --> B[HTTPX Client]
+  B --> C[camada Python<br/>src/dealhunter]
+  C --> D[Streamlit]
+  C --> E[persistência local<br/>JSON / CSV]
+  C --> F[Discord webhook]
+```
+
+`src/dealhunter/` concentra o domínio (busca, cotação, normalização, persistência). `app.py` só renderiza.
+
+## Problemas resolvidos
+
+| Problema | Abordagem |
+| --- | --- |
+| Várias APIs, schemas diferentes | Cada fonte vira `Oferta` (título, loja, preço, moeda, desconto, link). |
+| USD misturado com BRL nativo | Steam/Epic/GOG em BRL; CheapShark em USD × taxa do dia. |
+| Cotação fora do ar | Fallback em cadeia: AwesomeAPI → open.er-api → currency-api → PTAX → Frankfurter, com cache de 5 min. |
+| Jogo errado / demo no lugar do título | Normalização de título + `mesmo_jogo` (rejeita demo, DLC, soundtrack). |
+| Duplicata na lista | Deduplicação por `(título, loja)`. |
+| Loja indisponível | Falha isolada: uma fonte cai, as outras seguem. |
+| Alertas | Webhook do Discord quando o preço-alvo **ou** o desconto mínimo bate; anti-spam se o preço não melhorou. |
+
+## Decisões técnicas
+
+**`httpx.Client` em vez de um GET solto.** Um cliente só: timeout, `User-Agent`, cookies da Steam (idade) e redirects. Reuso de conexão nas várias lojas da mesma ação do usuário.
+
+**Fallback de câmbio, não uma API só.** AwesomeAPI costuma responder 429/403 em IP de datacenter (Streamlit Cloud). O `get()` não pode engolir isso num `RuntimeError` genérico — senão o fallback nunca roda. 403 falha na hora; 429 vira `HTTPStatusError` depois das tentativas; a próxima fonte assume.
+
+**Normalização entre fontes.** CheapShark fala USD e IDs de loja; Steam HTML/appdetails fala centavos BRL; Epic fala centavos no JSON de promoções; GOG mistura catálogo e ajax. Tudo cai no mesmo `TypedDict` antes da UI.
+
+**Histórico em CSV append-only.** Barato de inspecionar, fácil de plotar no Streamlit, sem banco no demo. Wishlist e webhook em JSON.
+
+## Limite atual da persistência
+
+No Community Cloud, `data/` vive **só na instância**. Redeploy apaga wishlist, histórico e webhook.
+
+Evolução natural:
+
+1. **SQLite local** (`data/dealhunter.sqlite`) — mesma API de persistência, um arquivo, funciona offline e no Cloud enquanto o disco existir.
+2. **Supabase / Postgres** — se a wishlist tiver que sobreviver a redeploy e ser compartilhada.
+
+Para portfólio o arquivo local basta; o ponto frágil é o disco efêmero do Cloud, não o modelo de dados.
+
+## Rodar localmente
 
 Python **3.14+** e [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync
 uv run streamlit run app.py
+uv run pytest
 ```
 
 Abre em `http://localhost:8501`.
 
-## Streamlit Community Cloud
+## Discord
 
-O Cloud lê o `uv.lock` (não usa `requirements.txt`).
-
-1. Publique este repositório no GitHub.
-2. Em [share.streamlit.io](https://share.streamlit.io), faça deploy com:
-   - Main file path: `app.py`
-   - Branch: `main`
-3. Se pedir a versão do Python, escolha **3.14** (a mesma do `pyproject.toml`).
-
-Wishlist, histórico e webhook ficam só na instância do Cloud (`data/`). Cada deploy tem a própria lista.
-
-## Alerta no Discord
-
-Na página **Minha wishlist** → **Alerta no Discord**:
-
-1. No canal: **Editar canal → Integrações → Webhooks → Novo webhook**
-2. Cole a URL e defina o desconto mínimo
-3. **Salvar webhook** e, se quiser, **Enviar teste**
-4. **Checar preços agora** dispara o aviso quando o preço-alvo **ou** o desconto mínimo for atingido
-
-A URL do webhook é senha do canal. Ela fica em `data/config.json` (fora do git). Não compartilhe e não commite esse arquivo.
+**Minha wishlist → Alerta no Discord:** webhook do canal, desconto mínimo, **Checar preços agora**. A URL fica em `data/config.json` (fora do git).
 
 ## Estrutura
 
 ```
-app.py                 # interface Streamlit
-pyproject.toml         # projeto e dependências
-uv.lock                # lock do uv (o Cloud usa este arquivo)
-src/apiaprendiz/       # busca, cotação, lojas, persistência, Discord
-data/                  # wishlist, histórico e config (locais, gitignored)
+app.py                 # UI Streamlit
+src/dealhunter/        # HTTP, cotação, lojas, normalização, persistência, Discord
+tests/                 # conversão BRL, título, deduplicação, fallback de câmbio
+data/                  # wishlist, histórico, config (gitignored)
+docs/screenshots/      # imagens do README
 ```
 
 ## Aviso
 
-Os preços vêm de APIs públicas (Steam, Epic, GOG, CheapShark, cotação USD/BRL). Podem atrasar, falhar ou divergir da loja. Confira no site oficial antes de comprar.
+Preços vêm de APIs públicas e podem atrasar ou divergir da loja. Confira no site oficial antes de comprar.

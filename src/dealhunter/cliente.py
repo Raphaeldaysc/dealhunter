@@ -5,6 +5,7 @@ import time
 import httpx
 
 TIMEOUT = httpx.Timeout(15.0, read=45.0)
+HTTP_SEM_RETRY = frozenset({400, 401, 403, 404, 405, 410, 422})
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -42,10 +43,20 @@ def get(
         try:
             resposta = client.get(url, params=params)
             if resposta.status_code == 429:
+                ultimo_erro = httpx.HTTPStatusError(
+                    f"HTTP 429 em {url}",
+                    request=resposta.request,
+                    response=resposta,
+                )
                 time.sleep(1.5 * (tentativa + 1))
                 continue
             resposta.raise_for_status()
             return resposta
+        except httpx.HTTPStatusError as erro:
+            ultimo_erro = erro
+            if erro.response.status_code in HTTP_SEM_RETRY:
+                raise
+            time.sleep(0.8 * (tentativa + 1))
         except httpx.HTTPError as erro:
             ultimo_erro = erro
             time.sleep(0.8 * (tentativa + 1))

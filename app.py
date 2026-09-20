@@ -11,11 +11,11 @@ if str(SRC) not in sys.path:
 import httpx
 import streamlit as st
 
-from apiaprendiz.discord_alerta import enviar_alerta_discord, webhook_valido
-from apiaprendiz.formatacao import formatar_brl, preco_em_brl, preco_normal_brl
-from apiaprendiz.modelos import Candidato, Oferta
-from apiaprendiz.persistencia import carregar_config, salvar_config
-from apiaprendiz.servico import (
+from dealhunter.discord_alerta import enviar_alerta_discord, webhook_valido
+from dealhunter.formatacao import formatar_brl, preco_em_brl, preco_normal_brl
+from dealhunter.modelos import Candidato, Oferta
+from dealhunter.persistencia import carregar_config, salvar_config
+from dealhunter.servico import (
     adicionar_wishlist,
     buscar_candidatos,
     carregar_wishlist,

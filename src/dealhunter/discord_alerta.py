@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import httpx
 
-from apiaprendiz.formatacao import formatar_brl
+from dealhunter.formatacao import formatar_brl
 
 WEBHOOK_PREFIXOS = (
     "https://discord.com/api/webhooks/",
