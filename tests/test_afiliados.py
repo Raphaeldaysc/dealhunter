@@ -109,7 +109,12 @@ def test_link_prefere_o_rastreado_e_cai_no_oficial() -> None:
     so_oficial = {"affiliateUrl": "https://meli.la/1eERqGB"}
     assert afiliados.link_da_oferta(so_oficial) == "https://meli.la/1eERqGB"
 
-    assert afiliados.link_da_oferta({"affiliateUrl": "http://inseguro"}) == ""
+    # portal local em http tambem vale (o clique precisa ser contado)
+    assert afiliados.link_da_oferta({"trackedUrl": "http://localhost:3101/ir/x"}) == (
+        "http://localhost:3101/ir/x"
+    )
+
+    assert afiliados.link_da_oferta({"trackedUrl": "javascript:alert(1)"}) == ""
     assert afiliados.link_da_oferta({}) == ""
 
 

@@ -106,12 +106,17 @@ def ofertas(feed: dict[str, Any]) -> list[dict[str, Any]]:
     return validos
 
 
+def _url_web(valor: object) -> bool:
+    """Só http(s): o portal pode estar em http local; `javascript:` nunca."""
+    return isinstance(valor, str) and valor.startswith(("https://", "http://"))
+
+
 def link_da_oferta(item: dict[str, Any]) -> str:
     """Link rastreado do portal; cai no link oficial se o portal não expôs."""
     for chave in ("trackedUrl", "affiliateUrl"):
         valor = item.get(chave)
-        if isinstance(valor, str) and valor.startswith("https://"):
-            return valor
+        if _url_web(valor):
+            return str(valor)
     return ""
 
 
