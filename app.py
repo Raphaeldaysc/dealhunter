@@ -11,6 +11,19 @@ if str(SRC) not in sys.path:
 import httpx
 import streamlit as st
 
+from dealhunter.afiliados import (
+    FeedIndisponivel,
+    avaliacao_texto,
+    buscar_feed,
+    desconto_pct,
+    link_da_oferta,
+    ofertas as ofertas_comissao,
+    origem_texto,
+    preco_original_texto,
+    preco_texto,
+    resolver_url,
+)
+from dealhunter.afiliados import aviso as aviso_afiliado
 from dealhunter.discord_alerta import enviar_alerta_discord, webhook_valido
 from dealhunter.formatacao import formatar_brl, preco_em_brl, preco_normal_brl
 from dealhunter.modelos import Candidato, Oferta
@@ -100,6 +113,92 @@ def _buscar(termo: str, _v: str = CACHE_VERSAO) -> list[Candidato]:
 def _comparar(candidato: Candidato, _v: str = CACHE_VERSAO) -> list[Oferta]:
     with criar_cliente() as client:
         return comparar_jogo(client, candidato)
+
+
+def _feed_url() -> str:
+    """URL do feed comissionado: secrets do Streamlit > variável de ambiente > local."""
+    try:
+        segredo = st.secrets.get("BYUS_FEED_URL")
+    except Exception:  # sem secrets.toml no ambiente local
+        segredo = None
+    return resolver_url(str(segredo) if segredo else None)
+
+
+@st.cache_data(ttl=600, show_spinner="Buscando ofertas com comissão...")
+def _ofertas_comissao(_v: str = CACHE_VERSAO) -> dict:
+    with criar_cliente() as client:
+        return buscar_feed(client, url=_feed_url(), limite=12)
+
+
+def _texto_html(texto: str) -> str:
+    """`$` abre fórmula no markdown do Streamlit; escapa para exibir R$."""
+    return texto.replace("$", "&#36;")
+
+
+def _card_comissao(item: dict) -> None:
+    link = link_da_oferta(item)
+    with st.container(border=True):
+        st.caption(origem_texto(item))
+        st.markdown(f"**{item.get('title', 'Oferta')}**")
+        original = preco_original_texto(item)
+        atual = preco_texto(item)
+        if original:
+            st.markdown(
+                f'<span class="dh-old">{_texto_html(original)}</span> '
+                f'<span class="dh-price">{_texto_html(atual)}</span>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                f'<p class="dh-price">{_texto_html(atual)}</p>',
+                unsafe_allow_html=True,
+            )
+        desconto = desconto_pct(item)
+        if desconto:
+            st.write(f"Desconto: **{desconto}%**")
+        nota = avaliacao_texto(item)
+        if nota:
+            st.caption(nota)
+        st.link_button("Ver oferta", link, use_container_width=True)
+
+
+def _grade_comissao(itens: list[dict], limite: int = 12) -> None:
+    visiveis = itens[:limite]
+    for inicio in range(0, len(visiveis), 3):
+        colunas = st.columns(3)
+        for coluna, item in zip(colunas, visiveis[inicio : inicio + 3], strict=False):
+            with coluna:
+                _card_comissao(item)
+
+
+def _pagina_comissao() -> None:
+    st.subheader("Ofertas com comissão")
+    st.caption(
+        "Console, gift card, controle, cadeira e placa de vídeo: aqui o clique é contado "
+        "e o projeto recebe comissão. Steam, Epic e GOG não têm programa de afiliado "
+        "acessível por link — o preço delas continua na comparação, sem gerar receita."
+    )
+
+    try:
+        feed = _ofertas_comissao()
+    except FeedIndisponivel as erro:
+        st.warning("O portal de ofertas não respondeu agora. O resto do app segue normal.")
+        st.caption(str(erro))
+        st.caption(
+            "Configure `BYUS_FEED_URL` nos secrets do Streamlit com a URL pública do feed "
+            "(ex.: `https://<seu-dominio>/v1/offers/feed`)."
+        )
+        return
+
+    itens = ofertas_comissao(feed)
+    st.info(aviso_afiliado(feed))
+    if not itens:
+        st.info(
+            "Nenhuma oferta publicada neste nicho agora. "
+            "Entra assim que uma oferta com link oficial verificado for aprovada."
+        )
+        return
+    _grade_comissao(itens)
 
 
 def _card_oferta(item: Oferta, taxa: float) -> None:
@@ -438,11 +537,15 @@ def main() -> None:
             "Buscar jogo",
             "Melhores promoções",
             "Jogos grátis",
+            "Ofertas com comissão",
             "Minha wishlist",
         ],
         index=0,
     )
     st.sidebar.caption("Dados em `data/wishlist.json` e `data/historico.csv`.")
+    st.sidebar.caption(
+        "Ofertas com comissão vêm do portal by.us (nicho games) e o clique é contado lá."
+    )
     st.sidebar.markdown(
         "Feito por [Raphael Dias](https://www.raphaeldias.dev.br/)"
     )
@@ -453,6 +556,8 @@ def main() -> None:
         _pagina_promocoes(taxa)
     elif pagina == "Jogos grátis":
         _pagina_gratis(taxa)
+    elif pagina == "Ofertas com comissão":
+        _pagina_comissao()
     else:
         _pagina_wishlist(taxa)
 

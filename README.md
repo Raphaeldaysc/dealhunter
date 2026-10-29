@@ -92,6 +92,30 @@ data/                  # wishlist, histórico, config (gitignored)
 docs/screenshots/      # imagens do README
 ```
 
+## Ofertas com comissão (by.us)
+
+Comparar preço em Steam, Epic e GOG **não gera receita**: nenhuma dessas lojas tem programa de afiliado acessível por link. O que paga em games é console, gift card, controle, cadeira e placa de vídeo — e esses itens vêm do feed do portal **by.us** (nicho `games`), já com link rastreado.
+
+A aba **Ofertas com comissão** lê `GET /v1/offers/feed?niche=games&ref=dealhunter`. Cada item traz `trackedUrl` (`https://<portal>/ir/<slug>?ref=dealhunter`): o clique é contado no portal e o visitante cai no link **oficial** do programa, que é quem credita a comissão.
+
+```bash
+# local (docker compose do portal)
+export BYUS_FEED_URL=http://127.0.0.1:4040/v1/offers/feed
+uv run streamlit run app.py
+```
+
+No Streamlit Cloud, coloque a URL pública em **Settings → Secrets**:
+
+```toml
+BYUS_FEED_URL = "https://<seu-dominio>/v1/offers/feed"
+```
+
+Decisões que valem registro:
+
+- **O app não monta link de afiliado.** Ele usa o que o feed entrega. Inventar parâmetro de afiliado na URL é o caminho mais curto para comissão não creditada.
+- **Feed fora do ar não quebra o app.** `FeedIndisponivel` vira um aviso na aba; busca, promoções, grátis e wishlist seguem funcionando.
+- **Preço não observado não vira número.** Sem `price.show`, o card diz "Ver preço no site" em vez de estimar.
+
 ## Aviso
 
-Preços vêm de APIs públicas e podem atrasar ou divergir da loja. Confira no site oficial antes de comprar.
+Preços vêm de APIs públicas e podem atrasar ou divergir da loja. Confira no site oficial antes de comprar. Esta página contém links de afiliado.
